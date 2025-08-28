@@ -1,9 +1,31 @@
 import React from 'react'
 import { useAppContext } from '../../context/AppContext';
+import toast from 'react-hot-toast';
 
 const ProductList = () => {
-  const { products, currency } = useAppContext();
+  const { products, currency, axios, fetchProducts, setProducts } = useAppContext();
 
+  const toggleStock = async(id, inStock) => {
+    try {
+      const {data} = await axios.post('/api/product/stock',
+         {id, inStock})
+      if(data.success) {
+        // Update local state immediately
+        setProducts((prevProducts) =>
+          prevProducts.map((product) =>
+            product._id === id ? { ...product, inStock } : product
+          )
+        );
+        fetchProducts(); // Refresh product list after stock change
+        toast.success(data.message || "Stock status updated");
+      } else {
+        toast.error(data.message || "Failed to update stock status");
+      }
+
+    } catch (error) {
+      toast.error(error.message);
+    }
+  }
   return (
     <div className="no-scrollbar flex-1 h-[95vh] overflow-y-scroll flex flex-col justify-between">
       <div className="w-full md:p-10 p-4">
@@ -24,9 +46,13 @@ const ProductList = () => {
                   <td className="md:px-4 pl-2 md:pl-4 py-3 flex items-center space-x-3 truncate">
                     <div className="border border-gray-300 rounded overflow-hidden">
                       <img
-                        src={Array.isArray(product.image) ? product.image[0] : product.image}
+                        src={
+                          product.images && product.images.length > 0
+                            ? product.images[0]
+                            : "/fallback.png" // fallback image
+                        }
                         alt={product.name}
-                        className="w-16"
+                        className="w-16 h-16 object-cover"
                       />
                     </div>
                     <span className="truncate max-sm:hidden w-full">
@@ -34,15 +60,18 @@ const ProductList = () => {
                     </span>
                   </td>
                   <td className="px-4 py-3">{product.category}</td>
-                  <td className="px-4 py-3 max-sm:hidden">{currency}{product.offerPrice}</td>
+                  <td className="px-4 py-3 max-sm:hidden">
+                    {currency}{product.offerPrice}
+                  </td>
                   <td className="px-4 py-3">
                     <label className="relative inline-flex items-center cursor-pointer">
                       <input
+                        onChange={() => toggleStock(product._id,
+                           !product.inStock)} checked={product.inStock}
                         type="checkbox"
                         className="sr-only peer"
-                        defaultChecked={product.inStock}
                       />
-                      <div className="w-12 h-7 bg-slate-300 rounded-full peer-checked:bg-blue-600 transition-colors duration-200">
+                      <div className="w-12 h-7 bg-slate-300 rounded-full peer-checked:bg-blue-600 transition-colors duration-200 relative">
                         <div className="dot absolute top-1 left-1 w-5 h-5 bg-white rounded-full transition-transform duration-200 peer-checked:translate-x-5"></div>
                       </div>
                     </label>

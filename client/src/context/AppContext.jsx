@@ -2,7 +2,10 @@ import { createContext, useContext, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { dummyProducts } from "../assets/assets";
 import toast from "react-hot-toast";
+import axios from "axios";
 
+axios.defaults.withCredentials = true;
+axios.defaults.baseURL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:4000'; // Fallback to localhost if not set
 export const AppContext = createContext();
 
 export const AppContextProvider = ({ children }) => {
@@ -15,12 +18,52 @@ export const AppContextProvider = ({ children }) => {
     const [products, setProducts] = useState([]);
     const [cartItems, setCartItems] = useState({});
     const [searchQuery, setSearchQuery] = useState({});
+    
+    // Fetch Seller Status
+    const fetchSeller = async() => {
+        try {
+            const {data} = await axios.get('/api/seller/is-auth');
+            if(data.success) {
+                setIsSeller(true);
+            } else {
+                setIsSeller(false);
+            }
+        }
+        catch(error) {
+            console.log(error);
+            setIsSeller(false);
+        }
+    }
 
+    // Fetch User Auth Status, User Data and Cart Items
+    const fetchUser = async() => {
+        try {
+            const {data} = await axios.get('/api/user/is-auth');
+            if(data.success) {
+                setUser(data.user);
+                setCartItems(data.user.cartItems);
+            }
+        } catch(error) {
+            setUser(null);
+        }
+    }
+   
     // ✅ Fix: Proper arrow function syntax
-    const fetchProducts = async () => {
-        // This would be API call in real app
-        setProducts(dummyProducts);
-    };
+   const fetchProducts = async () => {
+    try {
+        const { data } = await axios.get('/api/product/list');
+        if (data.success) {
+            setProducts(data.products);
+        } else {
+            toast.error(data.message || "Failed to fetch products");
+        }
+    } catch (error) {
+        // Axios wraps errors → error.response?.data?.message is safer
+        const errMsg = error.response?.data?.message || error.message || "Error fetching products";
+        toast.error(errMsg);
+    }
+};
+
 
     // ✅ Fix: Add itemId as argument
     const addToCart = (itemId) => {
@@ -87,8 +130,29 @@ export const AppContextProvider = ({ children }) => {
     }
 
     useEffect(() => {
+        fetchUser();
+        fetchSeller();
         fetchProducts();
     }, []);
+
+    // Update databse cart items when cartItems state changes
+    useEffect(() => {
+        const updatecart = async() => {
+            try {
+                const {data} = await axios.post('http://localhost:4000/api/cart/update', {cartItems})
+                if(!data.success) {
+                    toast.error(data.message);
+                }
+            }    catch(error) {
+                console.log(error);
+                toast.error(error.message);
+            }
+        }
+        
+        if(user) {
+            updatecart();
+        }
+    }, [cartItems])
 
     const value = {
         navigate,
@@ -107,7 +171,10 @@ export const AppContextProvider = ({ children }) => {
         searchQuery,
         setSearchQuery,
         getCartCount,
-        getCartAmount
+        getCartAmount,
+        axios,
+        fetchProducts,
+        setProducts,
     };
 
     return <AppContext.Provider value={value}>{children}</AppContext.Provider>;
