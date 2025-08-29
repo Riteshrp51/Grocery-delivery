@@ -62,22 +62,32 @@ export const productList = async (req, res) => {
 }
 
 // Get Single Product by ID : /api/product/:id
+// GET /api/product/:id
 export const productById = async (req, res) => {
-    try {
-        const {id} = req.body;
-        const product = await Product.findById(id);
-        res.json({
-            success: true,
-            product: product,
-        })
-    } catch (error) {
-        res.json({
-            success: false,
-            message: "Failed to fetch product",
-            error: error.message
-        })
+  try {
+    const { id } = req.params;  // 👈 use params, not body
+    const product = await Product.findById(id);
+
+    if (!product) {
+      return res.status(404).json({
+        success: false,
+        message: "Product not found",
+      });
     }
-}
+
+    res.json({
+      success: true,
+      product,
+    });
+  } catch (error) {
+    res.json({
+      success: false,
+      message: "Failed to fetch product",
+      error: error.message,
+    });
+  }
+};
+
 
 // Change stock : /api/product/stock
 export const changeStock = async (req, res) => {

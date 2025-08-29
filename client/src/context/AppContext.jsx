@@ -22,7 +22,7 @@ export const AppContextProvider = ({ children }) => {
     // Fetch Seller Status
     const fetchSeller = async() => {
         try {
-            const {data} = await axios.get('/api/seller/is-auth');
+            const {data} = await axios.get('http://localhost:4000/api/seller/is-auth');
             if(data.success) {
                 setIsSeller(true);
             } else {
@@ -150,7 +150,7 @@ export const AppContextProvider = ({ children }) => {
         }
         
         if(user) {
-            updatecart();
+            updatecart()
         }
     }, [cartItems])
 
